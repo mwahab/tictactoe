@@ -4,8 +4,119 @@ import math
 
 DEBUG = True
 board = [i for i in range(0,9)]
-player, computer, current_player = '','',''
 
+class TicTacToePlayer:
+    TYPES = ["HUMAN", "COMPUTER"]
+
+    def __init__(self, board, player, player_type):
+        self.board = board
+        self.player = player
+        self.player_type = player_type
+
+    def equals3(self, a, b, c):
+        return a == b and b == c and (a == 'X' or a == 'O')
+
+    def space_exist(self):
+        return (self.board.count('X') + self.board.count('O')) != 9
+
+    def can_move(self, move):
+        return (move != None) and move in range(0,9) and not(self.board[move] in ('X', 'O'))
+
+    def possible_moves(self):
+        moves = []
+        for i in self.board:
+            if i != 'X' and i != 'O':
+                moves.append(i)
+        return moves
+
+    def make_move(self, move=None):
+        if move == None:
+            move = random.choice(self.possible_moves())
+            
+        if self.can_move(move):
+            self.board[move] = self.player
+            win, winner  = self.can_win()
+            if DEBUG: print('Move: %s' %(move))
+            return True, win
+        return False, False
+
+    def can_win(self):
+        for i in range(3):
+            if self.equals3(self.board[i*3+0], self.board[i*3+1], self.board[i*3+2]):
+                return True, self.board[i*3+0]
+        for i in range(3):
+            if self.equals3(self.board[0+i], self.board[3+i], self.board[6+i]):
+                return True, self.board[0+i]
+        if self.equals3(self.board[0], self.board[4], self.board[8]) or self.equals3(self.board[6], self.board[4], self.board[2]):
+            return True, self.board[4]
+        return False, None
+
+
+class MinimaxPlayer(TicTacToePlayer):
+    MAX_DEPTH = 5 
+
+    def make_move(self, move=None):
+        potential_moves = self.possible_moves()
+
+        if len(potential_moves) > 0:
+            move = None
+            bestScore = -math.inf
+            for i in potential_moves:
+                self.board[i] = self.player
+                score = self.minimax(0, -math.inf, math.inf, False)
+                self.board[i] = i
+                if score > bestScore:
+                    move = i
+                    bestScore = score
+            self.board[move] = self.player
+            win, winner = self.can_win()
+        
+            return True, win
+        return False, False
+
+    def minimax(self, depth, alpha, beta, maximizingPlayer):
+
+        # someone wins
+        wins, winner = self.can_win()
+        if wins:
+            if winner == self.player:
+                return 10 * (MinimaxPlayer.MAX_DEPTH - depth + 1)
+
+            else:
+                return -10 * (MinimaxPlayer.MAX_DEPTH - depth + 1)
+
+        moves = self.possible_moves()
+        # tie or reached maximum search depth
+        if len(moves) == 0 or depth == MinimaxPlayer.MAX_DEPTH:
+            return 0
+
+        if maximizingPlayer:
+            maxEval  = -math.inf
+            for i in moves:
+                self.board[i] = self.player
+                score = self.minimax(depth+1, alpha, beta, False)
+                self.board[i] = i
+                maxEval = max(maxEval, score)
+                alpha = max(alpha, score)
+                if beta <= alpha:
+                    break
+            return maxEval
+
+        else:
+            minEval = math.inf
+            if self.player == 'X':
+                opponent = 'O'
+            else:
+                opponent = 'X'
+            for i in moves:
+                self.board[i] = opponent
+                score = self.minimax(depth+1, alpha, beta, True)
+                self.board[i] = i
+                minEval = min(minEval, score)
+                beta = min(beta, score)
+                if beta <= alpha:
+                    break
+            return minEval    
 
 def print_board():
     x = 1
@@ -18,9 +129,10 @@ def print_board():
         if i in ('X', 'O'):
             char = i
         else:
-                char = index
+            char = index
         x+=1
         if DEBUG: print (char, end = end)
+    print('\n')
 
 def select_char():
     chars=('X','O')
@@ -28,138 +140,42 @@ def select_char():
         return chars[::-1]
     return chars        
 
-def equals3(a, b, c):
-    return a == b and b == c and (a == 'X' or a == 'O')
 
-def space_exist():
-    return (board.count('X') + board.count('O')) != 9
+players = []
+players.append(TicTacToePlayer(board, 'X', TicTacToePlayer.TYPES[0]))
+#players.append(TicTacToePlayer(board, 'X', TicTacToePlayer.TYPES[1]))
+players.append(MinimaxPlayer(board, 'O', TicTacToePlayer.TYPES[1])) 
 
-def can_move(brd, player, move):
-    return move in range(0,9) and not(brd[move] in ('X', 'O'))  #brd[move] == move
-
-def can_win(brd):
-    for i in range(3):
-        if equals3(brd[i*3+0], brd[i*3+1], brd[i*3+2]):
-            return True, brd[i*3+0]
-    for i in range(3):
-        if equals3(brd[0+i], brd[3+i], brd[6+i]):
-            return True, brd[0+i]
-    if equals3(brd[0], brd[4], brd[8]) or equals3(brd[6], brd[4], brd[2]):
-        return True, brd[4]
-    return False, None
-
-MAX_DEPTH = 5 
-
-def computer_move(brd):
-    potential_moves = possible_moves(brd)
-
-    if DEBUG: print('computer player %s, potential moves: %s' %(computer, potential_moves))
-
-    if len(potential_moves) > 0:
-        #move =  random.choice(potential_moves)
-        move = None
-        bestScore = -math.inf
-        for i in potential_moves:
-            brd[i] = computer
-            score = minimax(brd, 0, -math.inf, math.inf, False)
-            brd[i] = i
-            if score > bestScore:
-                move = i
-                bestScore = score
-        brd[move] = computer
-        win, winner = can_win(brd)
-        
-        return True, win
-    return False, False
-
-def possible_moves(brd):
-    potential_moves = []
-    for i in brd:
-        if i != 'X' and i != 'O':
-            potential_moves.append(i)
-    return potential_moves
-
-def minimax(brd, depth, alpha, beta, maximizingPlayer):
-
-    # someone wins
-    wins, winner = can_win(brd)
-    if wins:
-        if winner == computer:
-            return 10 * (MAX_DEPTH - depth + 1)
-
-        else:
-            return -10 * (MAX_DEPTH - depth + 1)
-
-    moves = possible_moves(brd)
-    # tie or reached maximum search depth
-    if len(moves) == 0 or depth == MAX_DEPTH:
-        return 0
-
-    if maximizingPlayer:
-        maxEval  = -math.inf
-        moves = possible_moves(brd)
-        for i in moves:
-            brd[i] = computer
-            score = minimax(brd, depth+1, alpha, beta, False)
-            brd[i] = i
-            maxEval = max(maxEval, score)
-            alpha = max(alpha, score)
-            if beta <= alpha:
-                break
-        return maxEval
-
-    else:
-        minEval = math.inf
-        moves = possible_moves(brd)
-        for i in moves:
-            brd[i] = player
-            score = minimax(brd, depth+1, alpha, beta, True)
-            brd[i] = i
-            minEval = min(minEval, score)
-            beta = min(beta, score)
-            if beta <= alpha:
-                break
-        return minEval    
-
-def make_move(brd, player, move):
-    if can_move(brd, player, move):
-        brd[move] = player
-        win, winner  = can_win(brd)
-        if DEBUG: print('win: %s' %(win))
-        return True, win
-    return False, False
-
-player, computer = 'X', 'O'#select_char()
-
-current_player = player #computer
-
-if DEBUG: print('Player is [%s] and computer is [%s]\n' % (player, computer))       
+if DEBUG: print('Player %s is %s' %(players[0].player, players[0].player_type))
+if DEBUG: print('Player %s is %s\n\n' %(players[1].player, 'minimax'))
 
 won = False
-while space_exist() and not won:
+move_count = 0
+
+current_player = players[move_count % 2]
+
+while current_player.space_exist() and not won:
     print_board()
+
     moved = False
-    if current_player == player:
+    #if human player, solicit input for move!
+    if current_player.player_type == TicTacToePlayer.TYPES[0]:
         while not moved:
             if DEBUG: print('Make your move [0-8]: ')
             move = int(input())
-            moved, won = make_move(board, current_player, move)
-            if DEBUG and moved:
-                print('Move: %s\n' % move)
-            elif DEBUG:
+            moved, won = current_player.make_move(move)
+            if DEBUG and not moved:
                 print('Invalid move, try again.')
-        current_player = computer        
-        if won and DEBUG: 
-            print('Game over! Player wins')
-            print_board()
-            exit()
     else:
-        moved, won = computer_move(board)
-        current_player = player
-        if won and DEBUG: 
-            print('Game over! Computer wins')
-            print_board()
-            exit()
-print("Tie")
-   
+        moved, won = current_player.make_move()
+    if moved: move_count = move_count + 1
+    if won:
+        if DEBUG: print('Game over, player %s won in %s moves.' %(current_player.player, move_count))
+        print_board()
+        exit()
+    
+    current_player = players[move_count % 2]
 
+if DEBUG: print('Game over, tie!')        
+
+exit()    
