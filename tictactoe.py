@@ -42,6 +42,7 @@ move_count = 0
 
 current_player = players[move_count % 2]
 
+#main game loop
 while current_player.space_exist() and not won:
     print_board()
 

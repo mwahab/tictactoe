@@ -1,2 +1,7 @@
 *.swp
 *.DS_Store
+__pycache__/player.cpython-39.pyc
+*.pyc
+policy_O
+policy_X
+*.pyc
